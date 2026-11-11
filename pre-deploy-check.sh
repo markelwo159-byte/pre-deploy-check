@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# ship-check: a pre-ship quality and security gate for finished code.
-# Pipeline: secrets -> static -> dependencies -> unit/integration -> end-to-end -> performance -> ship.
+# pre-deploy-check: a security and test check to run on finished code before it is deployed.
+# Pipeline: secrets -> static -> dependencies -> unit/integration -> end-to-end -> performance -> deploy.
 #
 # Usage:
-#   ./ship-check.sh <project-dir> [--url https://site.example] [--perf-max 2.0] [--report report.md]
+#   ./pre-deploy-check.sh <project-dir> [--url https://site.example] [--perf-max 2.0] [--report report.md]
 #
 # Exit code: 0 when nothing FAILED (WARN and SKIP are allowed), 1 otherwise.
 
@@ -64,14 +64,14 @@ printf '%s\n' "$FILES" | while IFS= read -r f; do
   printf '%s\n' "$f"
 done > "$TMP/text_files"
 
-echo "ship-check: $PROJECT"
+echo "pre-deploy check: $PROJECT"
 echo "------------------------------------------------------------"
 
 # 1. Secrets ---------------------------------------------------------------
 SECRET_RE='(AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY-----|sk-ant-[A-Za-z0-9_-]{20,}|sk-(proj-)?[A-Za-z0-9]{32,}|gh[pousr]_[A-Za-z0-9]{36,}|xox[baprs]-[A-Za-z0-9-]{10,}|AIza[0-9A-Za-z_-]{35}|shpat_[a-f0-9]{32}|(api[_-]?key|secret|token|password)[[:space:]]*[:=][[:space:]]*["'"'"'][A-Za-z0-9/+_=-]{16,}["'"'"'])'
 if [ -s "$TMP/text_files" ]; then
   tr '\n' '\0' < "$TMP/text_files" | xargs -0 grep -EnI "$SECRET_RE" 2>/dev/null \
-    | grep -viE 'example|placeholder|your[_-]?key|xxxx|<redacted>|ship-check\.sh' > "$TMP/secrets" || true
+    | grep -viE 'example|placeholder|your[_-]?key|xxxx|<redacted>|pre-deploy-check\.sh' > "$TMP/secrets" || true
 fi
 if [ -s "$TMP/secrets" ]; then
   record FAIL secrets "$(wc -l < "$TMP/secrets" | tr -d ' ') possible secret(s): $(head -3 "$TMP/secrets" | sed "s|$PROJECT/||" | cut -c1-100 | tr '\n' ';')"
@@ -185,7 +185,7 @@ for t in "$PROJECT"/tests/*.sh; do
     record FAIL unit-tests "$(basename "$t"): $(tail -1 "$TMP/shtest")"
   fi
 done
-[ "$ran_tests" = 0 ] && record WARN unit-tests "no test suite found: every piece should have tests before it ships"
+[ "$ran_tests" = 0 ] && record WARN unit-tests "no test suite found: every piece should have tests before it is deployed"
 
 # 5. End-to-end ---------------------------------------------------------------
 if ls "$PROJECT"/playwright.config.* >/dev/null 2>&1; then
@@ -234,12 +234,12 @@ fi
 
 # Report --------------------------------------------------------------------------
 echo "------------------------------------------------------------"
-if [ "$FAILED" = 1 ]; then VERDICT="DO NOT SHIP: fix every FAIL first"; else VERDICT="OK TO SHIP (review any WARN)"; fi
+if [ "$FAILED" = 1 ]; then VERDICT="DO NOT DEPLOY: fix every FAIL first"; else VERDICT="OK TO DEPLOY (review any WARN)"; fi
 echo "$VERDICT"
 
 if [ -n "$REPORT" ]; then
   {
-    echo "# ship-check report"
+    echo "# pre-deploy check report"
     echo
     echo "Project: \`$PROJECT\`  "
     echo "Run: $(date '+%Y-%m-%d %I:%M %p')"

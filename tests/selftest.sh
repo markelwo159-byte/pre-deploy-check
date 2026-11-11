@@ -3,7 +3,7 @@
 # and checks that the broken one is blocked and the clean one passes.
 set -u
 HERE="$(cd "$(dirname "$0")/.." && pwd)"
-GATE="$HERE/ship-check.sh"
+GATE="$HERE/pre-deploy-check.sh"
 W="$(mktemp -d)"
 trap 'rm -rf "$W"' EXIT
 fail=0

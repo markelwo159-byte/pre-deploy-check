@@ -1,42 +1,53 @@
-# ship-check
+# Pre-Deploy Security & Test Check
 
-A pre-ship quality and security gate for AI-built code.
+**A security and quality check I run on every finished project before it goes live.**
 
-AI coding agents write code fast. That is not the same as production quality. Before anything I build goes live, it runs through the same pipeline a good engineering team uses:
+AI coding agents write code fast. Fast is not the same as safe or production-ready. So before anything I build is deployed, it has to pass the same kind of checks a professional engineering team runs:
 
 ```
-push → unit → integration → end-to-end → performance → ship
+security scan → code checks → dependency audit → unit & integration tests → end-to-end tests → speed test → deploy
 ```
 
-plus security checks up front. If anything fails, it doesn't ship.
+If any check fails, the project is not deployed until it's fixed.
 
 ## What it checks
 
-| Stage | What it does |
+| Check | What it does |
 | --- | --- |
-| **Secrets** | Scans every tracked file for API keys, tokens and private keys (AWS, Anthropic, OpenAI, GitHub, Slack, Google, Shopify, generic `api_key = "..."`). Fails if a `.env` file is committed. |
-| **Static** | Every Python file compiles, every JavaScript file parses. Flags risky patterns: `eval`, `innerHTML =`, `shell=True`, `os.system`, `pickle.load`, `verify=False`. |
-| **Dependencies** | `npm audit` for high and critical advisories, `pip-audit` for Python. Warns when versions aren't pinned. |
-| **Unit / integration** | Runs the project's `pytest` or `npm test` suite. Warns when there is no suite at all. |
-| **End-to-end** | Runs Playwright (or `tests/e2e` with pytest) so real user paths get clicked in a real browser. |
-| **Performance** | Times five requests to a live URL and fails if the median is over budget (2 seconds by default). |
+| **Leaked secrets** | Scans every file for API keys, passwords, tokens and private keys (AWS, Anthropic, OpenAI, GitHub, Slack, Google, Shopify and generic `api_key = "..."`). Fails if a `.env` secrets file was committed. |
+| **Code checks** | Every Python file compiles and every JavaScript file parses. Flags risky code to review: `eval`, `innerHTML =`, `shell=True`, `os.system`, `pickle.load`, `verify=False`. |
+| **Dependency audit** | Checks third-party packages for known security vulnerabilities (`npm audit`, `pip-audit`). Warns when versions aren't pinned. |
+| **Unit & integration tests** | Runs the project's test suite. Warns if a project has no tests at all. |
+| **End-to-end tests** | Runs browser tests (Playwright) that click through real user paths: sign in, add to cart, pay. If a project doesn't have them yet, it says so. |
+| **Speed test** | Loads the live page five times and fails if it's slower than the limit (2 seconds by default). |
 
-The verdict is **DO NOT SHIP** if any stage fails. Warnings are allowed, but each one needs a decision.
+The result is either **OK TO DEPLOY** or **DO NOT DEPLOY**. Warnings don't block, but each one needs a decision.
 
-## Usage
+## How to run it
 
 ```bash
-./ship-check.sh path/to/project
-./ship-check.sh path/to/project --url https://my-site.example --perf-max 1.5 --report report.md
+./pre-deploy-check.sh path/to/project
+./pre-deploy-check.sh path/to/project --url https://my-site.example --perf-max 1.5 --report report.md
 ```
 
-Exit code is `0` when nothing failed and `1` otherwise, so it works as a CI step (see [`ci/ship-check.yml`](ci/ship-check.yml)).
+It exits with `0` when nothing failed and `1` otherwise, so it can also run automatically on every code push (see [`ci/pre-deploy-check.yml`](ci/pre-deploy-check.yml)).
 
-## The review half
+## The human-style review
 
-The script catches what a machine can catch. [`skill/SKILL.md`](skill/SKILL.md) is a Claude Code skill that runs the script, then walks a written security and robustness protocol over the changed code: input validation, auth on every write, escaped output, timeouts and retries, idempotent scheduled jobs, restart-safe state, guard rails on bulk changes, exact math for money, and a watcher on anything that runs unattended.
+A script can only catch so much. [`skill/SKILL.md`](skill/SKILL.md) is a Claude Code skill that runs the script, then walks a written security and reliability review over the code:
+- user input is validated
+- every change to data is permission-checked
+- outside content is escaped before it's shown
+- network calls have timeouts and retries
+- scheduled jobs can safely run twice
+- a crash mid-run can recover
+- bulk changes have limits
+- money uses exact math
+- anything running unattended has monitoring on it
 
 ## Example
+
+A project with a leaked key, a committed `.env` file and a failing test:
 
 ```
 FAIL  secrets        1 possible secret(s): app.py:2:API_KEY = "sk-ant-api03-...";
@@ -46,7 +57,9 @@ WARN  risky-code     1 risky pattern(s) to review: app.py:5:os.system("ls");
 FAIL  unit-tests     pytest: 1 failed in 0.02s
 WARN  e2e            no end-to-end tests
 ------------------------------------------------------------
-DO NOT SHIP: fix every FAIL first
+DO NOT DEPLOY: fix every FAIL first
 ```
+
+`tests/selftest.sh` builds a broken project and a clean one and confirms the check blocks the first and passes the second.
 
 Built with Claude Code by [Mark Elwood](https://markelwo159-byte.github.io/ai-portfolio/).

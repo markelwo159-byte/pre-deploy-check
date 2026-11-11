@@ -1,20 +1,20 @@
 ---
-name: ship-check
-description: Run the pre-ship quality and security gate on finished code before it goes live. Use when the user says a project, feature or script is done, asks to "ship-check", "run security checks", "check before deploy", or wants a security and robustness review of finished code.
+name: pre-deploy-check
+description: Run the pre-deploy security and test check on finished code before it goes live. Use when the user says a project, feature or script is done, asks to "pre-deploy check", "ship-check", "run security checks", "check before deploy", or wants a security and robustness review of finished code.
 ---
 
-# ship-check
+# Pre-deploy security & test check
 
-A finished change is not done until it passes this gate. The order matters: push, unit, integration, end-to-end, performance, then ship.
+A finished change is not done until it passes this check. The order matters: security scan, code checks, dependencies, unit and integration tests, end-to-end tests, speed test, then deploy.
 
-## 1. Run the automated gate
+## 1. Run the automated check
 
 ```bash
-~/Documents/ship-check/ship-check.sh <project-dir> --report <project-dir>/ship-check-report.md
+~/Documents/pre-deploy-check/pre-deploy-check.sh <project-dir> --report <project-dir>/pre-deploy-check-report.md
 # add --url https://... for anything with a live page or endpoint (performance check, 2s default limit)
 ```
 
-Any FAIL blocks the ship. Fix it, then run the gate again. WARN items need a decision you state out loud: fix it, or explain why it is acceptable.
+Any FAIL blocks the deploy. Fix it, then run the check again. WARN items need a decision you state out loud: fix it, or explain why it is acceptable.
 
 ## 2. Claude review protocol (read the code, not just the tests)
 
@@ -46,4 +46,4 @@ Go through every changed file and check each item. Report findings with file and
 
 ## 3. Report
 
-Give a short verdict first: SHIP or DO NOT SHIP. Then the FAIL and WARN items with file:line and the fix. Save the gate's report next to the project.
+Give a short verdict first: DEPLOY or DO NOT DEPLOY. Then the FAIL and WARN items with file:line and the fix. Save the report next to the project.
